@@ -1,4 +1,5 @@
 db.properties
+project_analysis.md
 
 target/
 !.mvn/wrapper/maven-wrapper.jar
