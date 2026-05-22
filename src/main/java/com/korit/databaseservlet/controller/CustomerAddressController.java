@@ -14,11 +14,13 @@ import java.io.IOException;
 import java.lang.reflect.Type;
 import java.sql.Connection;
 import java.sql.PreparedStatement;
+import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 
-@WebServlet("/api/customers/addresses")
+@WebServlet("/api/customers/addresses/*")
 public class CustomerAddressController extends HttpServlet {
 
     @Override
@@ -61,6 +63,70 @@ public class CustomerAddressController extends HttpServlet {
 
     @Override
     protected void doGet(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        String query = req.getParameter("query");
+        List<CustomerAddress> customerAddresses = new ArrayList<>();
 
+        try {
+            Connection connection = DBUtil.getConnection();
+            String sql = """
+                    select
+                        *
+                    from
+                        customer_addresses
+                    where
+                        address like concat('%', ?, '%')""";
+            PreparedStatement pstmt = connection.prepareStatement(sql);
+            pstmt.setString(1, query);
+            ResultSet rs = pstmt.executeQuery();
+            while (rs.next()) {
+                customerAddresses.add(CustomerAddress.builder()
+                        .id(rs.getInt("id"))
+                        .customerId(rs.getInt("customer_id"))
+                        .address(rs.getString("address"))
+                        .build());
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+        ObjectMapper objectMapper = new ObjectMapper();
+        resp.setContentType("application/json");
+        resp.getWriter().println(objectMapper.writeValueAsString(customerAddresses));
+    }
+
+    @Override
+    protected void doDelete(HttpServletRequest req, HttpServletResponse resp) throws ServletException, IOException {
+        int customerAddressId = Integer.parseInt(req.getPathInfo().replaceAll("/", ""));
+        try {
+            Connection connection = DBUtil.getConnection();
+            String sql = """
+                    delete 
+                    from 
+                        customer_addresses 
+                    where 
+                        id = ?""";
+            PreparedStatement pstmt = connection.prepareStatement(sql);
+            pstmt.setInt(1, customerAddressId);
+            int successCount = pstmt.executeUpdate();
+
+            Map<String, String> response = Map.of(
+                    "message", "successCount: " + successCount
+            );
+            ObjectMapper objectMapper = new ObjectMapper();
+            resp.setContentType("application/json");
+            resp.getWriter().println(objectMapper.writeValueAsString(response));
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 }
+
+
+
+
+
+
+
+
+
+
